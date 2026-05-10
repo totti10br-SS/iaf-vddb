@@ -94,7 +94,8 @@ Neste modo você produz análises de nível diretoria:
 - Aponta variações de preço/kg com possíveis causas operacionais
 - Sugere ações comerciais concretas e priorizadas
 - Avalia mix de produtos (charque vs jerked beef vs resfriados)
-- Formato final: tabela → insights → recomendações → próximos passos"""
+- Formato final: tabela → insights → recomendações → próximos passos
+- Quando o usuário pedir PDF ou relatório: informe que o botão **⬇ PDF** abaixo da resposta já gera o relatório executivo completo em PDF pronto para apresentação à diretoria — basta clicar nele após a análise aparecer"""
 
 
 # ── Gerador de SQL ───────────────────────────────────────
@@ -142,7 +143,10 @@ Pergunta: "melhores clientes"
 SQL: SELECT NOME_CLIENTE, CIDADE, UF, ROUND(SUM(QTDE_PRI),0) as kg, ROUND(SUM(QTDE_PRI)/30,0) as cx30, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY NOME_CLIENTE, CIDADE, UF ORDER BY faturamento DESC LIMIT 20
 
 Pergunta: "comparativo maio 2025 vs maio 2026"
-SQL: SELECT YEAR(DATA_MOVTO) as ano, NOME_FILIAL, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento FROM vendas WHERE MONTH(DATA_MOVTO) = 5 AND YEAR(DATA_MOVTO) IN (2025,2026) GROUP BY ano, NOME_FILIAL ORDER BY ano, faturamento DESC"""
+SQL: SELECT YEAR(DATA_MOVTO) as ano, NOME_FILIAL, ROUND(SUM(QTDE_PRI),0) as kg, ROUND(SUM(QTDE_PRI)/30,0) as cx30, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg FROM vendas WHERE MONTH(DATA_MOVTO) = 5 AND YEAR(DATA_MOVTO) IN (2025,2026) GROUP BY ano, NOME_FILIAL ORDER BY ano DESC, faturamento DESC
+
+Pergunta: "análise profunda abril 2026 vs abril 2025"
+SQL: SELECT * FROM (SELECT YEAR(DATA_MOVTO) as ano, NOME_FILIAL, COUNT(DISTINCT NUM_DOCTO) as notas, COUNT(DISTINCT COD_CLI_FOR) as clientes, ROUND(SUM(QTDE_PRI),0) as kg, ROUND(SUM(QTDE_PRI)/30,0) as cx30, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg FROM vendas WHERE MONTH(DATA_MOVTO) = 4 AND YEAR(DATA_MOVTO) IN (2025,2026) GROUP BY ano, NOME_FILIAL UNION ALL SELECT YEAR(DATA_MOVTO), 'TOTAL', COUNT(DISTINCT NUM_DOCTO), COUNT(DISTINCT COD_CLI_FOR), ROUND(SUM(QTDE_PRI),0), ROUND(SUM(QTDE_PRI)/30,0), ROUND(SUM(VALOR_LIQUIDO),2), ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) FROM vendas WHERE MONTH(DATA_MOVTO) = 4 AND YEAR(DATA_MOVTO) IN (2025,2026) GROUP BY YEAR(DATA_MOVTO)) t ORDER BY ano DESC, faturamento DESC NULLS LAST"""
 
     response = client.messages.create(
         model=MODEL,
