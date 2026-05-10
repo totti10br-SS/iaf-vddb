@@ -4,7 +4,7 @@ import anthropic
 
 logger = logging.getLogger(__name__)
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client = anthropic.Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
 MODEL = "claude-haiku-4-5-20251001"
 
 

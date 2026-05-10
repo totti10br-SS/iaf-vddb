@@ -1,30 +1,28 @@
 import os
 import time
 import logging
+import pickle
+import base64
+import io
 from pathlib import Path
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-from google.oauth2 import service_account
-import io
-import json
 
 logger = logging.getLogger(__name__)
 
 CSV_PATH = Path("/tmp/vendas.csv")
 CACHE_TTL = int(os.getenv("CACHE_TTL_MINUTES", "30")) * 60
-FILE_ID = os.getenv("GOOGLE_DRIVE_FILE_ID", "1aXJ4dzf2XzmUMvb78gUA18YrCFL8bjbe")
+FILE_ID = os.getenv("DRIVE_FILE_ID", "1aXJ4dzf2XzmUMvb78gUA18YrCFL8bjbe")
 
 _last_download: float = 0
 
 
 def _get_drive_service():
-    creds_raw = os.getenv("GOOGLE_CREDENTIALS")
-    if not creds_raw:
-        raise RuntimeError("GOOGLE_CREDENTIALS não configurado")
-    info = json.loads(creds_raw)
-    creds = service_account.Credentials.from_service_account_info(
-        info, scopes=["https://www.googleapis.com/auth/drive.readonly"]
-    )
+    token_pickle_b64 = os.getenv("GOOGLE_TOKEN_PICKLE")
+    if not token_pickle_b64:
+        raise RuntimeError("GOOGLE_TOKEN_PICKLE não configurado")
+    token_bytes = base64.b64decode(token_pickle_b64)
+    creds = pickle.loads(token_bytes)
     return build("drive", "v3", credentials=creds)
 
 
