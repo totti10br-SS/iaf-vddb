@@ -4,7 +4,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-MAX_ROWS = 200  # máximo de linhas que vai para a IA
+MAX_ROWS = 200
 
 
 def execute_query(csv_path: Path, sql: str) -> dict:
@@ -13,38 +13,42 @@ def execute_query(csv_path: Path, sql: str) -> dict:
         "vendas",
         f"read_csv_auto('{csv_path}', header=true)"
     )
-
+    # limita resultado direto no SQL para não trazer linhas demais
     logger.info(f"Executando query: {safe_sql[:200]}")
 
     con = duckdb.connect()
     try:
-        df = con.execute(safe_sql).fetchdf()
+        rel = con.execute(safe_sql)
+        # pega colunas antes de fetchmany
+        columns = [desc[0] for desc in rel.description]
+        raw_rows = rel.fetchmany(MAX_ROWS + 1)
         con.close()
 
-        if len(df) > MAX_ROWS:
-            df = df.head(MAX_ROWS)
-            truncated = True
-        else:
-            truncated = False
+        truncated = len(raw_rows) > MAX_ROWS
+        raw_rows  = raw_rows[:MAX_ROWS]
+
+        # converte para lista de dicts sem pandas
+        rows = [dict(zip(columns, row)) for row in raw_rows]
 
         return {
-            "success": True,
-            "rows": df.to_dict(orient="records"),
-            "columns": list(df.columns),
-            "row_count": len(df),
+            "success":   True,
+            "rows":      rows,
+            "columns":   columns,
+            "row_count": len(rows),
             "truncated": truncated,
-            "error": None,
+            "error":     None,
         }
     except Exception as e:
-        con.close()
+        try: con.close()
+        except: pass
         logger.error(f"Erro na query: {e}")
         return {
-            "success": False,
-            "rows": [],
-            "columns": [],
+            "success":   False,
+            "rows":      [],
+            "columns":   [],
             "row_count": 0,
             "truncated": False,
-            "error": str(e),
+            "error":     str(e),
         }
 
 
@@ -55,14 +59,9 @@ def result_to_text(result: dict) -> str:
     if not result["rows"]:
         return "Nenhum registro encontrado para essa consulta."
 
-    lines = []
-    cols = result["columns"]
+    cols  = result["columns"]
+    lines = [" | ".join(cols), "-" * (len(cols) * 15)]
 
-    # cabeçalho
-    lines.append(" | ".join(cols))
-    lines.append("-" * (len(cols) * 15))
-
-    # linhas
     for row in result["rows"]:
         values = [str(row.get(c, "")) for c in cols]
         lines.append(" | ".join(values))
