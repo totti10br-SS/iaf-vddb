@@ -382,7 +382,15 @@ async function enviar(texto){
       +'</div>'
       +'<pre class="sql-box" id="'+sqlId+'">'+escHtml(data.sql)+'</pre>';
     var msgEl = addMsg(inner,'assistant');
-    carregarForecast(msgEl.querySelector('.bubble'));
+    // mostra previsão só se a pergunta for sobre volume/faturamento do mês atual
+    var perguntaLower = texto.toLowerCase();
+    var palavrasMes = ['este mes','esse mes','mês atual','mes atual','deste mes','desse mes','do mes','vendas hoje','resumo','dia a dia','diario','diário','faturamento','quanto vendemos','quanto faturamos'];
+    var ehMesAtual = palavrasMes.some(function(p){ return perguntaLower.indexOf(p) >= 0; });
+    // não mostra se for comparativo ou período específico passado
+    var ehPassado = ['passado','anterior','abril','marco','fevereiro','janeiro','2025','2024','vs','comparar','comparativo'].some(function(p){ return perguntaLower.indexOf(p) >= 0; });
+    if(ehMesAtual && !ehPassado){
+        carregarForecast(msgEl.querySelector('.bubble'));
+    }
   }catch(e){
     loading.remove();
     addMsg('Erro ao consultar. Tente novamente.','assistant');
