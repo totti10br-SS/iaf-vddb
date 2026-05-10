@@ -51,6 +51,7 @@ if os.path.isdir("static"):
 class PerguntaRequest(BaseModel):
     pergunta: str
     filial: str = "TODAS"
+    modo_analitico: bool = False
 
 class PerguntaResponse(BaseModel):
     resposta: str
@@ -84,7 +85,7 @@ async def ask(body: PerguntaRequest):
         schema_prompt = build_schema_prompt(schema)
         csv_path      = get_csv_path()
 
-        sql = generate_sql(body.pergunta, schema_prompt)
+        sql = generate_sql(body.pergunta, schema_prompt, body.modo_analitico)
 
         if sql.startswith("ERRO:"):
             return PerguntaResponse(
@@ -94,7 +95,7 @@ async def ask(body: PerguntaRequest):
 
         resultado       = execute_query(csv_path, sql)
         resultado_texto = result_to_text(resultado)
-        resposta        = narrate_result(body.pergunta, resultado_texto, schema_prompt)
+        resposta        = narrate_result(body.pergunta, resultado_texto, schema_prompt, body.modo_analitico)
 
         return PerguntaResponse(
             resposta=resposta,
@@ -208,13 +209,13 @@ async def ask_pdf(body: PerguntaRequest):
         schema_prompt = build_schema_prompt(schema)
         csv_path      = get_csv_path()
 
-        sql = generate_sql(body.pergunta, schema_prompt)
+        sql = generate_sql(body.pergunta, schema_prompt, body.modo_analitico)
         if sql.startswith("ERRO:"):
             raise HTTPException(status_code=400, detail=sql)
 
         resultado       = execute_query(csv_path, sql)
         resultado_texto = result_to_text(resultado)
-        resposta        = narrate_result(body.pergunta, resultado_texto, schema_prompt)
+        resposta        = narrate_result(body.pergunta, resultado_texto, schema_prompt, body.modo_analitico)
 
         pdf_bytes = gerar_pdf(
             pergunta  = body.pergunta,

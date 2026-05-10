@@ -5,9 +5,10 @@ import anthropic
 logger = logging.getLogger(__name__)
 
 client = anthropic.Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
-MODEL  = "claude-haiku-4-5-20251001"
+MODEL         = "claude-haiku-4-5-20251001"
+MODEL_ANALITICO = "claude-sonnet-4-5-20251001"
 
-# Mapeamento fixo das colunas conhecidas
+# ── Schema fixo das colunas conhecidas ───────────────────
 SCHEMA_FIXO = """
 COLUNAS DO CSV (separador ponto-e-vírgula):
 
@@ -31,7 +32,7 @@ DOCUMENTO FISCAL:
   - TIPO_OPERACAO     → tipo de operação
 
 DATA:
-  - DATA_MOVTO        → data do movimento (DATE) — usar para filtros de período
+  - DATA_MOVTO        → data do movimento (DATE)
 
 VALORES:
   - VALOR_LIQUIDO     → valor líquido da venda em R$ — principal coluna de faturamento
@@ -50,7 +51,7 @@ LOCALIZAÇÃO:
   - CIDADE            → cidade do cliente
   - COD_MUNICIPIO     → código do município
 
-PRODUTO EXTRA:
+PRODUTO:
   - MARCA             → marca do produto
   - MARCA_PROD        → marca específica do produto
   - DESC_DIVISAO2     → divisão/categoria nível 2
@@ -62,18 +63,41 @@ LOGÍSTICA:
   - NOME_MOTORISTA    → nome do motorista
   - PLACA1            → placa do veículo
   - CPF_CGC           → CPF ou CNPJ do cliente
-
-ITENS:
-  - ITEM / NUM_ITEM / NUM_SUBITEM → identificadores de item na nota
-  - CHAVE_FATO        → chave única do fato
-  - NUM_DOCTO_AUX     → número de documento auxiliar
-  - cod_vend_comp     → código do vendedor complementar
 """
 
+# ── Perfil do analista ───────────────────────────────────
+PERFIL_ANALISTA = """Você é um analista comercial sênior com 20 anos de experiência no mercado de proteínas animais — especialista em carnes resfriadas, jerked beef e charque.
 
-def generate_sql(pergunta: str, schema_prompt: str) -> str:
-    system = f"""Você é um analista de dados especialista em SQL DuckDB.
-Converta perguntas em português para SQL válido.
+Conhece profundamente todo o processo produtivo: desde o abate e tipificação de carcaças, processo de cura e salga do charque e jerked beef, rendimento de cortes, prazo de congelamento, controle de quebra, até a dinâmica comercial do varejo, atacado e food service.
+
+Trabalha diretamente com a diretoria da Frinense Alimentos gerando análises estratégicas, relatórios executivos e insights de mercado. Suas respostas são referência para tomada de decisão.
+
+SEU ESTILO DE RESPOSTA:
+- Respostas curtas, diretas e com credibilidade — sem enrolação
+- Sempre destaca o número mais importante primeiro
+- Usa contexto do mercado de carnes quando relevante (ex: sazonalidade, prazo de validade, giro de estoque)
+- Quando identifica algo fora do padrão nos dados, sinaliza proativamente
+- Nunca inventa números — se os dados não tiverem a informação, diz claramente: "Não encontrei esses dados no período consultado."
+- Formata valores em R$ e volumes em kg ou caixas (cx30 = caixa de 30kg)
+- Usa **negrito** apenas nos números mais relevantes
+- Máximo 4 parágrafos curtos — diretoria não tem tempo para texto longo"""
+
+PERFIL_ANALITICO = PERFIL_ANALISTA + """
+
+MODO ANALÍTICO ATIVADO:
+Neste modo você realiza análises mais profundas e comparativas:
+- Compara períodos (mês a mês, ano a ano)
+- Identifica tendências e sazonalidade típica do mercado de carnes
+- Aponta variações de preço médio por kg e possíveis causas
+- Avalia performance de vendedores e clientes com contexto estratégico
+- Sugere ações comerciais baseadas nos dados
+- Pode usar mais parágrafos quando a análise exigir profundidade"""
+
+
+# ── Gerador de SQL ───────────────────────────────────────
+def generate_sql(pergunta: str, schema_prompt: str, modo_analitico: bool = False) -> str:
+    system = f"""Você é um especialista em SQL DuckDB.
+Converta perguntas em português para SQL válido, considerando que os dados são de uma empresa de carnes (charque, jerked beef, carnes resfriadas).
 
 {SCHEMA_FIXO}
 
@@ -87,58 +111,52 @@ REGRAS OBRIGATÓRIAS:
 - Para mês atual: WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE)
 - Para hoje: WHERE DATA_MOVTO = CURRENT_DATE
 - Para esta semana: WHERE DATA_MOVTO >= date_trunc('week', CURRENT_DATE)
-- Sempre inclua LIMIT 200 no máximo
+- Para mês passado: WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH)
+- Para comparativo anual: filtre por YEAR(DATA_MOVTO) IN (YEAR(CURRENT_DATE), YEAR(CURRENT_DATE)-1)
+- Sempre use LIMIT 200 no máximo
 - Para rankings use ORDER BY ... DESC
 - Para resumos use GROUP BY + SUM/COUNT
+- R$/kg = ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0), 2)
 - Se não conseguir gerar SQL válido, retorne exatamente: ERRO: motivo
 
 EXEMPLOS:
 Pergunta: "resumo de vendas deste mês"
-SQL: SELECT NOME_FILIAL, COUNT(DISTINCT NUM_DOCTO) as notas, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY NOME_FILIAL ORDER BY faturamento DESC
+SQL: SELECT NOME_FILIAL, COUNT(DISTINCT NUM_DOCTO) as notas, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(QTDE_AUX),0) as caixas, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY NOME_FILIAL ORDER BY faturamento DESC
 
 Pergunta: "top 10 produtos do mês"
-SQL: SELECT DESC_PRODUTO, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY DESC_PRODUTO ORDER BY faturamento DESC LIMIT 10
+SQL: SELECT DESC_PRODUTO, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(QTDE_AUX),0) as caixas, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY DESC_PRODUTO ORDER BY faturamento DESC LIMIT 10
 
 Pergunta: "melhores clientes"
-SQL: SELECT NOME_CLIENTE, CIDADE, UF, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY NOME_CLIENTE, CIDADE, UF ORDER BY faturamento DESC LIMIT 20
+SQL: SELECT NOME_CLIENTE, CIDADE, UF, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY NOME_CLIENTE, CIDADE, UF ORDER BY faturamento DESC LIMIT 20
 
-Pergunta: "vendas por vendedor"
-SQL: SELECT NOM_VENDEDOR, COUNT(DISTINCT NUM_DOCTO) as notas, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY NOM_VENDEDOR ORDER BY faturamento DESC"""
+Pergunta: "comparativo maio 2025 vs maio 2026"
+SQL: SELECT YEAR(DATA_MOVTO) as ano, NOME_FILIAL, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento FROM vendas WHERE MONTH(DATA_MOVTO) = 5 AND YEAR(DATA_MOVTO) IN (2025,2026) GROUP BY ano, NOME_FILIAL ORDER BY ano, faturamento DESC"""
 
     response = client.messages.create(
         model=MODEL,
-        max_tokens=500,
+        max_tokens=600,
         system=system,
         messages=[{"role": "user", "content": pergunta}],
     )
 
     sql = response.content[0].text.strip()
-    # remove backticks se a IA insistir
     sql = sql.replace("```sql", "").replace("```", "").strip()
     logger.info(f"SQL gerado: {sql[:300]}")
     return sql
 
 
-def narrate_result(pergunta: str, resultado_texto: str, schema_prompt: str) -> str:
-    system = """Você é um assistente de análise de vendas da Frinense Alimentos.
-Recebeu dados em formato de tabela e deve responder de forma clara e objetiva em português.
-
-REGRAS:
-- Seja direto e objetivo
-- Destaque os números mais importantes em negrito com **valor**
-- Use R$ para valores monetários
-- Use kg para volumes
-- Máximo 4 parágrafos curtos
-- Se os dados estiverem vazios, diga que não encontrou registros para o período
-- ⛔ NUNCA invente dados que não estejam na tabela recebida"""
+# ── Narrador ─────────────────────────────────────────────
+def narrate_result(pergunta: str, resultado_texto: str, schema_prompt: str, modo_analitico: bool = False) -> str:
+    perfil = PERFIL_ANALITICO if modo_analitico else PERFIL_ANALISTA
+    model  = MODEL_ANALITICO  if modo_analitico else MODEL
 
     response = client.messages.create(
-        model=MODEL,
-        max_tokens=1000,
-        system=system,
+        model=model,
+        max_tokens=1200 if modo_analitico else 800,
+        system=perfil,
         messages=[{
             "role": "user",
-            "content": f"Pergunta: {pergunta}\n\nDados:\n{resultado_texto}"
+            "content": f"Pergunta: {pergunta}\n\nDados encontrados:\n{resultado_texto}"
         }],
     )
 
