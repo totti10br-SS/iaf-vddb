@@ -146,9 +146,10 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;ba
   <div class="logo">V</div>
   <div class="header-info">
     <h1>IAF VDDB <span class="badge-vddb">VDDB</span></h1>
-    <p id="csvData">Carregando...</p>
+    <p style="font-size:10px;color:rgba(255,255,255,.65);">Analista Comercial · DuckDB</p>
   </div>
   <div class="header-right">
+    <span id="csvData" style="font-size:9px;color:rgba(255,255,255,.5);font-family:'Barlow Condensed',sans-serif;white-space:nowrap;margin-right:4px;"></span>
     <button id="stopSpeakBtn" title="Parar audio" onclick="stopSpeaking()" style="display:none;width:32px;height:28px;background:rgba(200,30,30,.15);border:1px solid rgba(200,30,30,.4);border-radius:5px;cursor:pointer;color:#e03030;font-size:14px;align-items:center;justify-content:center;">⏹</button>
     <button class="hbtn" id="btnAtualizar" onclick="forceReload()" title="Recarregar dados do Drive">↺ ATUALIZAR</button>
     <button class="hbtn" onclick="openVoicePanel()" title="Configurar voz">🔊 VOZ</button>
