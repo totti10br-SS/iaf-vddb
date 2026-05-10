@@ -7,37 +7,33 @@ logger = logging.getLogger(__name__)
 
 def detect_schema(csv_path: Path) -> dict:
     con = duckdb.connect()
+
+    # colunas e tipos
     result = con.execute(f"""
         DESCRIBE SELECT * FROM read_csv_auto('{csv_path}', header=true)
     """).fetchall()
-    con.close()
+    columns = [{"name": row[0], "type": row[1]} for row in result]
 
-    columns = []
-    for row in result:
-        columns.append({"name": row[0], "type": row[1]})
-
-    # pega amostra de 3 linhas para exemplos
-    con = duckdb.connect()
-    sample = con.execute(f"""
+    # amostra de 3 linhas — sem pandas, dict manual
+    col_names = [c["name"] for c in columns]
+    sample_rows = con.execute(f"""
         SELECT * FROM read_csv_auto('{csv_path}', header=true) LIMIT 3
-    """).fetchdf()
-    con.close()
+    """).fetchall()
+    sample = [dict(zip(col_names, row)) for row in sample_rows]
 
-    logger.info(f"Schema detectado: {len(columns)} colunas")
-    return {
-        "columns": columns,
-        "sample": sample.to_dict(orient="records"),
-        "total_rows": _count_rows(csv_path),
-    }
-
-
-def _count_rows(csv_path: Path) -> int:
-    con = duckdb.connect()
-    result = con.execute(f"""
+    # contagem
+    total_rows = con.execute(f"""
         SELECT COUNT(*) FROM read_csv_auto('{csv_path}', header=true)
-    """).fetchone()
+    """).fetchone()[0]
+
     con.close()
-    return result[0]
+    logger.info(f"Schema detectado: {len(columns)} colunas, {total_rows} linhas")
+
+    return {
+        "columns":    columns,
+        "sample":     sample,
+        "total_rows": total_rows,
+    }
 
 
 def build_schema_prompt(schema: dict) -> str:
@@ -47,7 +43,6 @@ def build_schema_prompt(schema: dict) -> str:
     lines.append(f"\nTotal de registros: {schema['total_rows']:,}")
     if schema["sample"]:
         lines.append("\nExemplo de 1 linha:")
-        sample = schema["sample"][0]
-        for k, v in sample.items():
+        for k, v in schema["sample"][0].items():
             lines.append(f"  {k}: {v}")
     return "\n".join(lines)

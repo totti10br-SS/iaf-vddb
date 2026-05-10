@@ -179,13 +179,11 @@ async def clear_cache():
 
 @app.get("/info")
 async def info():
-    from loader import _last_download, CSV_PATH
-    import time
-    ultima = datetime.fromtimestamp(_last_download).strftime("%d/%m/%Y %H:%M") if _last_download else "—"
+    from loader import _csv_modified, CSV_PATH
     schema = _schema_cache
     return {
         "total_registros": schema.get("total_rows", 0) if schema else 0,
-        "ultima_atualizacao": ultima,
+        "ultima_atualizacao": _csv_modified,
         "csv_mb": round(CSV_PATH.stat().st_size / 1024 / 1024, 1) if CSV_PATH.exists() else 0,
     }
 

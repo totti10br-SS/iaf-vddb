@@ -15,6 +15,7 @@ CACHE_TTL = int(os.getenv("CACHE_TTL_MINUTES", "30")) * 60
 FILE_ID = os.getenv("DRIVE_FILE_ID", "1aXJ4dzf2XzmUMvb78gUA18YrCFL8bjbe")
 
 _last_download: float = 0
+_csv_modified: str = '—'
 
 
 def _get_drive_service():
@@ -27,9 +28,23 @@ def _get_drive_service():
 
 
 def _download_csv():
-    global _last_download
+    global _last_download, _csv_modified
     logger.info("Baixando CSV do Google Drive...")
     service = _get_drive_service()
+    # pega metadados para data de modificação
+    meta = service.files().get(fileId=FILE_ID, fields="modifiedTime,name").execute()
+    modified_raw = meta.get("modifiedTime", "")
+    try:
+        from datetime import datetime, timezone
+        dt = datetime.strptime(modified_raw, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+        import time as _time
+        local_offset = -_time.timezone
+        from datetime import timedelta
+        dt_local = dt + timedelta(seconds=local_offset)
+        _csv_modified = dt_local.strftime("%d/%m/%Y %H:%M")
+    except:
+        _csv_modified = modified_raw[:16] if modified_raw else "—"
+
     request = service.files().get_media(fileId=FILE_ID)
     buffer = io.BytesIO()
     downloader = MediaIoBaseDownload(buffer, request)
@@ -39,7 +54,7 @@ def _download_csv():
     CSV_PATH.write_bytes(buffer.getvalue())
     _last_download = time.time()
     size_mb = CSV_PATH.stat().st_size / 1024 / 1024
-    logger.info(f"CSV baixado: {size_mb:.1f}MB")
+    logger.info(f"CSV baixado: {size_mb:.1f}MB — modificado em: {_csv_modified}")
 
 
 def get_csv_path() -> Path:
