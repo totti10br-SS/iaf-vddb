@@ -177,6 +177,13 @@ async def clear_cache():
     return {"status": "cache invalidado"}
 
 
+@app.get("/forecast")
+async def forecast():
+    from forecast import calcular_previsao
+    csv_path = get_csv_path()
+    dados = calcular_previsao(csv_path)
+    return dados
+
 @app.get("/info")
 async def info():
     from loader import _csv_modified, CSV_PATH
