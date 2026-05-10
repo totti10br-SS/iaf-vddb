@@ -209,15 +209,6 @@ def gerar_pdf(pergunta: str, resposta: str, rows: list, columns: list, row_count
 
     story.append(Spacer(1,12))
 
-    # ── SQL ────────────────────────────────────────────────
-    story.append(HRFlowable(width="100%", thickness=0.3, color=CINZ2))
-    story.append(Spacer(1,4))
-    story.append(Paragraph("SQL EXECUTADO", s_muted))
-    story.append(Spacer(1,2))
-    sql_clean = sql.replace("<","&lt;").replace(">","&gt;")
-    story.append(Paragraph(sql_clean, s_sql))
-    story.append(Spacer(1,8))
-
     # ── Rodapé ─────────────────────────────────────────────
     story.append(HRFlowable(width="100%", thickness=0.5, color=CINZ2))
     story.append(Spacer(1,3))
