@@ -344,7 +344,7 @@ async function enviar(texto){
     var resp=await fetch('/ask',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({pergunta:texto})
+      body:JSON.stringify({pergunta:texto, modo_analitico: document.body.classList.contains('modo-analitico')})
     });
     var data=await resp.json();
     loading.remove();
@@ -438,7 +438,7 @@ async function baixarPDF(btn, perguntaB64){
     var resp=await fetch('/ask/pdf',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({pergunta:pergunta})
+      body:JSON.stringify({pergunta:pergunta, modo_analitico: document.body.classList.contains('modo-analitico')})
     });
     if(!resp.ok) throw new Error('Erro '+resp.status);
     var blob=await resp.blob();
