@@ -68,6 +68,18 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;ba
 .bubble p{margin-bottom:8px;}.bubble p:last-child{margin-bottom:0;}
 .bubble ul{margin:6px 0 6px 17px;}.bubble li{margin-bottom:4px;}
 .bubble table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;display:block;overflow-x:auto;}
+.tbl-wrap{overflow-x:auto;margin:10px 0;border-radius:6px;border:1px solid rgba(255,255,255,.08);}
+.tbl-wrap table{width:100%;border-collapse:collapse;font-size:13px;display:table;}
+.tbl-wrap th{background:rgba(204,0,0,.35);padding:7px 10px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--yellow);font-size:12px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid rgba(204,0,0,.5);white-space:nowrap;}
+.tbl-wrap td{padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.06);color:#fff;font-size:13px;white-space:nowrap;}
+.tbl-wrap tr:last-child td{border-bottom:none;}
+.tbl-wrap tr:nth-child(even) td{background:rgba(255,255,255,.03);}
+.tbl-wrap tr:hover td{background:rgba(204,0,0,.08);}
+.tbl-wrap td:not(:first-child){text-align:right;}
+.tbl-wrap th:not(:first-child){text-align:right;}
+.resp-title{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:1px;margin:10px 0 6px;border-bottom:1px solid rgba(245,200,0,.2);padding-bottom:4px;}
+.resp-subtitle{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px;}
+.resp-li{padding:3px 0 3px 14px;border-left:2px solid rgba(204,0,0,.4);margin:3px 0;font-size:13px;color:var(--text2);}
 .bubble th{background:rgba(204,0,0,.3);padding:5px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--yellow);font-size:13px;text-transform:uppercase;border:1px solid rgba(204,0,0,.4);}
 .bubble td{padding:5px 8px;border:1px solid rgba(255,255,255,.08);color:#fff;}
 .bubble tr:nth-child(even) td{background:rgba(255,255,255,.03);}
@@ -459,12 +471,64 @@ async function baixarPDF(btn, perguntaB64){
 }
 
 function markdownToHtml(md){
-  return md
+  var lines = md.split('\n');
+  var html = '';
+  var inTable = false;
+  var tableHtml = '';
+  var headerDone = false;
+
+  for(var i=0; i<lines.length; i++){
+    var line = lines[i].trim();
+
+    // Linha de tabela
+    if(line.startsWith('|') && line.endsWith('|')){
+      // Linha separadora (|---|---|)
+      if(/^[|\s\-:]+$/.test(line)){
+        if(!headerDone){ tableHtml += '</thead><tbody>'; headerDone=true; }
+        continue;
+      }
+      if(!inTable){
+        tableHtml = '<div class="tbl-wrap"><table><thead><tr>';
+        inTable=true; headerDone=false;
+      }
+      var cells = line.split('|').filter(function(c){return c.trim()!=='';});
+      var tag = (!headerDone) ? 'th' : 'td';
+      var row = cells.map(function(c){
+        return '<'+tag+'>'+inlineFormat(c.trim())+'</'+tag+'>';
+      }).join('');
+      tableHtml += '<tr>'+row+'</tr>';
+      continue;
+    }
+
+    // Fecha tabela anterior
+    if(inTable){
+      html += tableHtml+'</tbody></table></div>';
+      inTable=false; tableHtml=''; headerDone=false;
+    }
+
+    if(!line){ html += '<div style="height:6px"></div>'; continue; }
+
+    // Título # 
+    if(line.startsWith('# ')){ html += '<div class="resp-title">'+inlineFormat(line.slice(2))+'</div>'; continue; }
+    if(line.startsWith('## ')){ html += '<div class="resp-subtitle">'+inlineFormat(line.slice(3))+'</div>'; continue; }
+
+    // Lista
+    if(line.startsWith('- ') || line.startsWith('* ')){
+      html += '<div class="resp-li">'+inlineFormat(line.slice(2))+'</div>'; continue;
+    }
+
+    html += '<p>'+inlineFormat(line)+'</p>';
+  }
+
+  if(inTable) html += tableHtml+'</tbody></table></div>';
+  return html;
+}
+
+function inlineFormat(s){
+  return s
     .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
     .replace(/\*([^*]+)\*/g,'<em>$1</em>')
-    .replace(/\n\n/g,'</p><p>')
-    .replace(/\n/g,'<br>')
-    .replace(/^/,'<p>').replace(/$/,'</p>');
+    .replace(/`([^`]+)`/g,'<code>$1</code>');
 }
 </script>
 </body>
