@@ -9,9 +9,11 @@ MAX_ROWS = 200
 
 def execute_query(csv_path: Path, sql: str) -> dict:
     # substitui placeholder da tabela pelo caminho real do CSV
-    safe_sql = sql.replace(
-        "vendas",
-        f"read_csv_auto('{csv_path}', header=true)"
+    import re
+    safe_sql = re.sub(
+        r'\bvendas\b',
+        f"read_csv_auto('{csv_path}', header=true)",
+        sql
     )
     # limita resultado direto no SQL para não trazer linhas demais
     logger.info(f"Executando query: {safe_sql[:200]}")
