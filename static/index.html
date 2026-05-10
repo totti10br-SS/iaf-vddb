@@ -75,11 +75,21 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;ba
 .tbl-wrap tr:last-child td{border-bottom:none;}
 .tbl-wrap tr:nth-child(even) td{background:rgba(255,255,255,.03);}
 .tbl-wrap tr:hover td{background:rgba(204,0,0,.08);}
+.tbl-wrap tr.total-row td{background:rgba(245,200,0,.1)!important;border-top:2px solid rgba(245,200,0,.4);color:var(--yellow);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;}
 .tbl-wrap td:not(:first-child){text-align:right;}
 .tbl-wrap th:not(:first-child){text-align:right;}
 .resp-title{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:1px;margin:10px 0 6px;border-bottom:1px solid rgba(245,200,0,.2);padding-bottom:4px;}
 .resp-subtitle{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px;}
 .resp-li{padding:3px 0 3px 14px;border-left:2px solid rgba(204,0,0,.4);margin:3px 0;font-size:13px;color:var(--text2);}
+.forecast-card{margin-top:12px;background:rgba(245,200,0,.06);border:1px solid rgba(245,200,0,.25);border-left:3px solid var(--yellow);border-radius:6px;padding:10px 14px;}
+.forecast-title{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.forecast-grid{display:flex;gap:12px;flex-wrap:wrap;}
+.forecast-item{display:flex;flex-direction:column;gap:2px;min-width:80px;}
+.forecast-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;}
+.forecast-value{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:#fff;line-height:1.1;}
+.forecast-value.destaque{color:var(--yellow);}
+.forecast-bar{margin-top:8px;background:rgba(255,255,255,.08);border-radius:3px;height:4px;overflow:hidden;}
+.forecast-bar-fill{height:100%;background:var(--yellow);border-radius:3px;transition:width .6s ease;}
 .bubble th{background:rgba(204,0,0,.3);padding:5px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--yellow);font-size:13px;text-transform:uppercase;border:1px solid rgba(204,0,0,.4);}
 .bubble td{padding:5px 8px;border:1px solid rgba(255,255,255,.08);color:#fff;}
 .bubble tr:nth-child(even) td{background:rgba(255,255,255,.03);}
@@ -371,7 +381,8 @@ async function enviar(texto){
       +'<span class="row-count">'+data.row_count+' reg.</span>'
       +'</div>'
       +'<pre class="sql-box" id="'+sqlId+'">'+escHtml(data.sql)+'</pre>';
-    addMsg(inner,'assistant');
+    var msgEl = addMsg(inner,'assistant');
+    carregarForecast(msgEl.querySelector('.bubble'));
   }catch(e){
     loading.remove();
     addMsg('Erro ao consultar. Tente novamente.','assistant');
@@ -442,6 +453,33 @@ function desativarAnalitico(){
 }
 (function(){ if(localStorage.getItem('iaf_vddb_modo')==='analitico') document.body.classList.add('modo-analitico'); })();
 
+async function carregarForecast(bubbleEl){
+  try{
+    var r = await fetch('/forecast');
+    if(!r.ok) return;
+    var d = await r.json();
+    if(!d.fat_realizado) return;
+
+    function fmtBRL(v){ return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+    function fmtKg(v){ return parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})+' kg'; }
+
+    var card = document.createElement('div');
+    card.className = 'forecast-card';
+    card.innerHTML =
+      '<div class="forecast-title">📈 Previsão do mês — '+d.mes_ano+
+      ' <span style="font-size:10px;color:var(--muted);font-weight:400;">('+d.pct_mes_executado+'% executado · '+d.n_dias_realizados+' dias realizados · '+d.uteis_restantes+' úteis restantes)</span></div>'+
+      '<div class="forecast-grid">'+
+        '<div class="forecast-item"><div class="forecast-label">Realizado</div><div class="forecast-value">'+fmtBRL(d.fat_realizado)+'</div></div>'+
+        '<div class="forecast-item"><div class="forecast-label">Projeção mês</div><div class="forecast-value destaque">'+fmtBRL(d.fat_projetado)+'</div></div>'+
+        '<div class="forecast-item"><div class="forecast-label">Média/dia</div><div class="forecast-value">'+fmtBRL(d.media_fat_dia)+'</div></div>'+
+        '<div class="forecast-item"><div class="forecast-label">Vol. realizado</div><div class="forecast-value">'+fmtKg(d.kg_realizado)+'</div></div>'+
+        '<div class="forecast-item"><div class="forecast-label">Vol. projetado</div><div class="forecast-value destaque">'+fmtKg(d.kg_projetado)+'</div></div>'+
+      '</div>'+
+      '<div class="forecast-bar"><div class="forecast-bar-fill" style="width:'+d.pct_mes_executado+'%"></div></div>';
+    bubbleEl.appendChild(card);
+  }catch(e){ console.error('forecast erro:',e); }
+}
+
 async function baixarPDF(btn, perguntaB64){
   if(btn.classList.contains('loading')) return;
   btn.classList.add('loading');
@@ -493,10 +531,13 @@ function markdownToHtml(md){
       }
       var cells = line.split('|').filter(function(c){return c.trim()!=='';});
       var tag = (!headerDone) ? 'th' : 'td';
+      // linha de totais
+      var isTotal = cells.length>0 && /^(TOTAL|Total|TOTAIS|Totais)/i.test(cells[0].trim());
+      var trClass = isTotal ? ' class="total-row"' : '';
       var row = cells.map(function(c){
         return '<'+tag+'>'+inlineFormat(c.trim())+'</'+tag+'>';
       }).join('');
-      tableHtml += '<tr>'+row+'</tr>';
+      tableHtml += '<tr'+trClass+'>'+row+'</tr>';
       continue;
     }
 
