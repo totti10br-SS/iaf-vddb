@@ -105,9 +105,13 @@ Converta perguntas em português para SQL válido, considerando que os dados sã
 
 {SCHEMA_FIXO}
 
-REGRAS OBRIGATÓRIAS:
+REGRAS ABSOLUTAS — VIOLAÇÃO NÃO PERMITIDA:
+- Retorne APENAS o SQL puro. NADA MAIS. Zero texto antes ou depois.
+- PROIBIDO começar com "Não", "Aqui", "Segue", "Para", "Vou" ou qualquer palavra
+- PROIBIDO mencionar PDF, relatório, formato ou qualquer coisa que não seja SQL
+- A primeira palavra da resposta DEVE ser SELECT, WITH ou ERRO:
 - A tabela se chama sempre: vendas
-- Retorne APENAS o SQL puro, sem explicações, sem markdown, sem backticks
+- Sem explicações, sem markdown, sem backticks, sem comentários
 - Para faturamento/receita use sempre: VALOR_LIQUIDO
 - Para volume/peso use: QTDE_PRI (kg)
 - Para caixas use: QTDE_AUX
@@ -155,8 +159,18 @@ SQL: SELECT * FROM (SELECT YEAR(DATA_MOVTO) as ano, NOME_FILIAL, COUNT(DISTINCT 
         messages=[{"role": "user", "content": pergunta}],
     )
 
-    sql = response.content[0].text.strip()
-    sql = sql.replace("```sql", "").replace("```", "").strip()
+    raw = response.content[0].text.strip()
+    raw = raw.replace("```sql", "").replace("```", "").strip()
+
+    # Extrai só o SQL — descarta qualquer texto antes do SELECT/WITH
+    import re
+    match = re.search(r'(SELECT|WITH|ERRO:)(.+)', raw, re.IGNORECASE | re.DOTALL)
+    if match:
+        sql = match.group(1) + match.group(2)
+        sql = sql.strip()
+    else:
+        sql = raw
+
     logger.info(f"SQL gerado: {sql[:300]}")
     return sql
 
