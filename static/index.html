@@ -473,7 +473,9 @@ async function carregarForecast(bubbleEl){
         '<div class="forecast-item"><div class="forecast-label">Projeção mês</div><div class="forecast-value destaque">'+fmtBRL(d.fat_projetado)+'</div></div>'+
         '<div class="forecast-item"><div class="forecast-label">Média/dia</div><div class="forecast-value">'+fmtBRL(d.media_fat_dia)+'</div></div>'+
         '<div class="forecast-item"><div class="forecast-label">Vol. realizado</div><div class="forecast-value">'+fmtKg(d.kg_realizado)+'</div></div>'+
+        '<div class="forecast-item"><div class="forecast-label">CX30 realizado</div><div class="forecast-value">'+parseInt(d.cx30_realizado).toLocaleString('pt-BR')+' cx</div></div>'+
         '<div class="forecast-item"><div class="forecast-label">Vol. projetado</div><div class="forecast-value destaque">'+fmtKg(d.kg_projetado)+'</div></div>'+
+        '<div class="forecast-item"><div class="forecast-label">CX30 projetado</div><div class="forecast-value destaque">'+parseInt(d.cx30_projetado).toLocaleString('pt-BR')+' cx</div></div>'+
       '</div>'+
       '<div class="forecast-bar"><div class="forecast-bar-fill" style="width:'+d.pct_mes_executado+'%"></div></div>';
     bubbleEl.appendChild(card);
