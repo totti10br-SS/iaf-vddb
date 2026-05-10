@@ -168,12 +168,25 @@ async def schema_info():
     }
 
 @app.post("/cache/clear")
+@app.get("/cache/invalidar")
 async def clear_cache():
     global _schema_cache
     invalidate_cache()
     _schema_cache = {}
     return {"status": "cache invalidado"}
 
+
+@app.get("/info")
+async def info():
+    from loader import _last_download, CSV_PATH
+    import time
+    ultima = datetime.fromtimestamp(_last_download).strftime("%d/%m/%Y %H:%M") if _last_download else "—"
+    schema = _schema_cache
+    return {
+        "total_registros": schema.get("total_rows", 0) if schema else 0,
+        "ultima_atualizacao": ultima,
+        "csv_mb": round(CSV_PATH.stat().st_size / 1024 / 1024, 1) if CSV_PATH.exists() else 0,
+    }
 
 if __name__ == "__main__":
     import uvicorn

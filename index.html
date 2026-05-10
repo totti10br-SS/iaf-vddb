@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>IAF VDDB · Analista Comercial</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --red:#CC0000;--red-dark:#A00000;
+  --yellow:#F5C800;--yellow-dim:rgba(245,200,0,.12);
+  --bg:#111;--surface:#1C1C1C;--surface2:#252525;--surface3:#2E2E2E;
+  --border:rgba(255,255,255,.08);--border-y:rgba(245,200,0,.2);
+  --text:#FFFFFF;--text2:#C8C8C8;--muted:#777;
+  --analitico-bg:#0a0f1a;--analitico-surface:#0f1928;
+  --analitico-border:rgba(56,189,248,.2);--analitico-accent:#38bdf8;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
+body.modo-analitico{background:var(--analitico-bg);}
+body.modo-analitico header{background:linear-gradient(135deg,#0a1628,#0f1f3d);}
+body.modo-analitico header::after{background:var(--analitico-accent);}
+body.modo-analitico #messages{background:var(--analitico-bg);}
+body.modo-analitico .input-area{background:var(--analitico-surface);border-top-color:var(--analitico-accent);}
+body.modo-analitico #userInput{background:#0a1628;color:#e0f2fe;border-color:rgba(56,189,248,.3);}
+body.modo-analitico #sendBtn{background:var(--analitico-accent);}
+body.modo-analitico .message.assistant .bubble{background:var(--analitico-surface);border-color:var(--analitico-border);}
+body.modo-analitico .analitico-btn-ativar{display:none!important;}
+body.modo-analitico .analitico-btn-voltar{display:inline-flex!important;}
+.analitico-btn-voltar{display:none!important;}
+header{background:var(--red);padding:0 14px;height:48px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.5);flex-shrink:0;position:relative;}
+header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--yellow);}
+.logo{width:30px;height:30px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--red);flex-shrink:0;}
+.header-info h1{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#fff;}
+.header-info p{font-size:10px;color:rgba(255,255,255,.65);}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:nowrap;}
+.badge-vddb{background:rgba(245,200,0,.18);border:1px solid rgba(245,200,0,.4);border-radius:4px;padding:2px 8px;font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--yellow);font-weight:700;letter-spacing:1px;}
+.hbtn{background:none;border:1px solid rgba(245,200,0,.3);border-radius:5px;padding:3px 8px;cursor:pointer;color:var(--yellow);font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.5px;transition:all .2s;white-space:nowrap;}
+.hbtn:hover{background:rgba(245,200,0,.1);}
+.hbtn:disabled{opacity:.5;cursor:not-allowed;}
+.hbtn-analitico{background:rgba(56,189,248,.1);border-color:rgba(56,189,248,.4);color:#38bdf8;}
+.hbtn-analitico:hover{background:rgba(56,189,248,.2);}
+.hbtn-voltar{background:rgba(56,189,248,.15);border-color:#38bdf8;color:#38bdf8;}
+#csvData{font-size:9px;color:rgba(255,255,255,.5);font-family:'Barlow Condensed',sans-serif;white-space:nowrap;}
+
+#messages{flex:1;overflow-y:auto;padding:14px 12px 8px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth;}
+#messages::-webkit-scrollbar{width:3px;}
+#messages::-webkit-scrollbar-thumb{background:rgba(204,0,0,.3);border-radius:2px;}
+
+.welcome{margin:auto;text-align:center;max-width:480px;animation:fadeUp .5s ease;padding:20px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.welcome h2{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:2px;color:#fff;line-height:1;margin-bottom:8px;}
+.welcome h2 span{color:var(--yellow);}
+.welcome p{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:18px;}
+.suggestions{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;}
+.suggestion{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 14px;font-size:13px;cursor:pointer;transition:all .2s;color:var(--text2);font-weight:500;}
+.suggestion:hover{border-color:var(--yellow);color:var(--yellow);background:var(--yellow-dim);}
+
+.message{display:flex;gap:10px;animation:fadeUp .25s ease;max-width:98%;width:98%;}
+.message.user{align-self:flex-end;flex-direction:row-reverse;}
+.msg-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:2px;font-family:'Bebas Neue',sans-serif;letter-spacing:.3px;}
+.message.assistant .msg-avatar{background:var(--red);color:var(--yellow);border:1.5px solid var(--yellow);}
+.message.user .msg-avatar{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:13px;}
+.bubble{padding:11px 15px;border-radius:10px;font-size:14px;line-height:1.7;flex:1;min-width:0;word-break:break-word;}
+.message.assistant .bubble{background:var(--surface);border:1px solid var(--border);border-radius:3px 10px 10px 10px;}
+.message.user .bubble{background:var(--red-dark);border-radius:10px 3px 10px 10px;color:#fff;}
+.bubble strong{color:var(--yellow);font-weight:700;}
+.bubble p{margin-bottom:8px;}.bubble p:last-child{margin-bottom:0;}
+.bubble ul{margin:6px 0 6px 17px;}.bubble li{margin-bottom:4px;}
+.bubble table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;display:block;overflow-x:auto;}
+.bubble th{background:rgba(204,0,0,.3);padding:5px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--yellow);font-size:13px;text-transform:uppercase;border:1px solid rgba(204,0,0,.4);}
+.bubble td{padding:5px 8px;border:1px solid rgba(255,255,255,.08);color:#fff;}
+.bubble tr:nth-child(even) td{background:rgba(255,255,255,.03);}
+
+.msg-actions{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+.speak-btn{font-size:14px;cursor:pointer;opacity:.5;transition:opacity .2s;user-select:none;background:none;border:none;color:#fff;padding:0;}
+.speak-btn:hover{opacity:1;}
+.speak-btn.speaking{opacity:1;animation:micPulse .8s infinite;}
+.sql-toggle{font-size:11px;color:var(--muted);cursor:pointer;font-family:'Barlow Condensed',sans-serif;letter-spacing:.3px;}
+.sql-toggle:hover{color:var(--yellow);}
+.sql-box{display:none;margin-top:6px;background:#0a0a0a;padding:8px;border-radius:6px;font-size:11px;color:#888;overflow-x:auto;white-space:pre-wrap;}
+.sql-box.visible{display:block;}
+.row-count{font-size:11px;color:var(--muted);margin-left:auto;}
+.pdf-btn{font-size:11px;cursor:pointer;color:var(--yellow);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.5px;background:none;border:1px solid rgba(245,200,0,.3);border-radius:4px;padding:2px 8px;transition:all .2s;}
+.pdf-btn:hover{background:var(--yellow-dim);border-color:var(--yellow);}
+.pdf-btn.loading{opacity:.5;cursor:not-allowed;}
+
+.typing .bubble{display:flex;gap:5px;align-items:center;padding:12px 15px;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--yellow);opacity:.8;animation:blink 1.2s infinite;}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{transform:scale(1);opacity:.8}30%{transform:scale(1.5);opacity:1}}
+@keyframes micPulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.input-area{padding:10px 12px;background:var(--surface);border-top:2px solid var(--red);display:flex;gap:8px;align-items:flex-end;flex-shrink:0;}
+#userInput{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;font-family:'Barlow',sans-serif;resize:none;max-height:100px;min-height:42px;line-height:1.5;transition:border-color .2s;}
+#userInput:focus{outline:none;border-color:var(--yellow);box-shadow:0 0 0 3px var(--yellow-dim);}
+#userInput::placeholder{color:var(--muted);}
+#userInput:disabled{opacity:.4;cursor:not-allowed;}
+#sendBtn{width:42px;height:42px;flex-shrink:0;background:var(--red);border:1px solid rgba(245,200,0,.35);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+#sendBtn:hover{background:var(--red-dark);}
+#sendBtn:disabled{opacity:.35;cursor:not-allowed;}
+#sendBtn svg{width:16px;height:16px;fill:var(--yellow);}
+#micBtn{width:42px;height:42px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-size:18px;}
+#micBtn:hover{border-color:var(--yellow);}
+#micBtn.recording{background:rgba(200,30,30,.25);border-color:#e03030;animation:micPulse .8s infinite;}
+#micBtn:disabled{opacity:.35;cursor:not-allowed;}
+#stopSpeakBtn{display:none;width:42px;height:42px;flex-shrink:0;background:rgba(200,30,30,.15);border:1px solid rgba(200,30,30,.4);border-radius:8px;cursor:pointer;align-items:center;justify-content:center;font-size:16px;color:#e03030;transition:all .2s;}
+#stopSpeakBtn:hover{background:rgba(200,30,30,.25);}
+
+/* DANFE modal */
+.danfe-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;}
+.danfe-overlay.active{display:flex;}
+.danfe-box{background:#1a1a1a;border:1px solid #333;border-radius:8px;width:92vw;max-width:960px;height:88vh;display:flex;flex-direction:column;overflow:hidden;}
+.danfe-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#111;border-bottom:1px solid #333;flex-shrink:0;}
+.danfe-header span{color:#f0f0f0;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.danfe-btn-dl{display:inline-flex;align-items:center;gap:5px;background:#b22222;border:none;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:5px 12px;border-radius:4px;cursor:pointer;}
+.danfe-btn-dl:hover{background:#cc0000;}
+.danfe-close{background:none;border:none;color:#888;font-size:22px;cursor:pointer;line-height:1;padding:2px 6px;}
+.danfe-close:hover{color:#fff;}
+.danfe-body{flex:1;overflow:hidden;position:relative;}
+.danfe-body iframe{width:100%;height:100%;border:none;}
+.danfe-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#888;font-family:'Barlow Condensed',sans-serif;font-size:15px;gap:12px;}
+.danfe-spinner{width:36px;height:36px;border:3px solid #333;border-top-color:#b22222;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Busca NF */
+.nf-search-bar{display:flex;gap:8px;margin-top:10px;}
+.nf-search-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;}
+.nf-search-input:focus{outline:none;border-color:var(--yellow);}
+.nf-search-btn{background:var(--red);border:none;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;padding:8px 16px;border-radius:6px;cursor:pointer;transition:background .2s;white-space:nowrap;}
+.nf-search-btn:hover{background:var(--red-dark);}
+
+/* PDF card */
+.pdf-card{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-left:3px solid #b22222;border-radius:8px;padding:10px 14px;margin-top:10px;cursor:pointer;transition:all .2s;}
+.pdf-card:hover{border-color:var(--yellow);background:rgba(245,200,0,.05);}
+.pdf-icon{font-size:26px;flex-shrink:0;}
+.pdf-info{flex:1;min-width:0;}
+.pdf-name{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#fff;letter-spacing:.5px;}
+.pdf-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.pdf-dl{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:var(--yellow);letter-spacing:.5px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">V</div>
+  <div class="header-info">
+    <h1>IAF VDDB <span class="badge-vddb">VDDB</span></h1>
+    <p id="csvData">Carregando...</p>
+  </div>
+  <div class="header-right">
+    <button id="stopSpeakBtn" title="Parar audio" onclick="stopSpeaking()" style="display:none;width:32px;height:28px;background:rgba(200,30,30,.15);border:1px solid rgba(200,30,30,.4);border-radius:5px;cursor:pointer;color:#e03030;font-size:14px;align-items:center;justify-content:center;">⏹</button>
+    <button class="hbtn" id="btnAtualizar" onclick="forceReload()" title="Recarregar dados do Drive">↺ ATUALIZAR</button>
+    <button class="hbtn" onclick="openVoicePanel()" title="Configurar voz">🔊 VOZ</button>
+    <button class="hbtn hbtn-analitico analitico-btn-ativar" onclick="ativarAnalitico()" title="Análises profundas">🔬 ANALÍTICO</button>
+    <button class="hbtn hbtn-voltar analitico-btn-voltar" onclick="desativarAnalitico()" title="Voltar ao modo rápido">← RÁPIDO</button>
+  </div>
+</header>
+
+<div id="messages">
+  <div class="welcome">
+    <h2>IAF <span>VDDB</span></h2>
+    <p>Analista de vendas com motor <strong>DuckDB</strong>.<br>Pergunte sobre faturamento, produtos, clientes ou cole uma chave de NF-e.</p>
+    <div class="suggestions">
+      <div class="suggestion" onclick="enviar(this.textContent)">Top 10 produtos do mes</div>
+      <div class="suggestion" onclick="enviar(this.textContent)">Faturamento por filial</div>
+      <div class="suggestion" onclick="enviar(this.textContent)">Melhores clientes</div>
+      <div class="suggestion" onclick="enviar(this.textContent)">Vendas desta semana</div>
+      <div class="suggestion" onclick="abrirBuscaNF()">Buscar nota fiscal</div>
+    </div>
+  </div>
+</div>
+
+<div class="input-area">
+  <textarea id="userInput" rows="1" placeholder="Pergunte sobre as vendas..." autocomplete="off"></textarea>
+  <button id="micBtn" title="Gravar pergunta" onclick="toggleMic()">🎤</button>
+  <button id="sendBtn" onclick="enviarInput()" title="Enviar">
+    <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+  </button>
+</div>
+
+<!-- DANFE modal -->
+<div class="danfe-overlay" id="danfeOverlay">
+  <div class="danfe-box">
+    <div class="danfe-header">
+      <span id="danfeTitulo">DANFE</span>
+      <div style="display:flex;gap:8px;">
+        <a id="danfeDlBtn" class="danfe-btn-dl" download="danfe.pdf">⬇ Baixar PDF</a>
+        <button class="danfe-close" onclick="fecharDanfe()">✕</button>
+      </div>
+    </div>
+    <div class="danfe-body">
+      <div class="danfe-loading" id="danfeLoading">
+        <div class="danfe-spinner"></div>
+        <span>Carregando DANFE...</span>
+      </div>
+      <iframe id="danfeIframe" style="display:none;"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Vozes ElevenLabs ─────────────────────────────────────
+var EL_VOICES = [
+  {id:'4za2kOXGgUd57HRSQ1fn', label:'Homem 1'},
+  {id:'zNEsdgTUa3ndwKry8Xcq', label:'Homem 2'},
+  {id:'GDzHdQOi6jjf8zaXhCYD', label:'Mulher 1'},
+];
+
+var _currentAudio = null;
+
+function stopSpeaking(){
+  if(_currentAudio){_currentAudio.pause();_currentAudio.currentTime=0;_currentAudio=null;}
+  if(window.speechSynthesis&&window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+  document.querySelectorAll('.speak-btn.speaking').forEach(function(b){b.classList.remove('speaking');b.textContent='🔊';});
+  document.getElementById('stopSpeakBtn').style.display='none';
+}
+
+function limparTextoParaVoz(raw){
+  var lines=raw.split('\n'), clean=[];
+  for(var i=0;i<lines.length;i++){
+    var l=lines[i];
+    if(l.indexOf('|')>=0||/^[-|\s]+$/.test(l)||l.indexOf('```')>=0) continue;
+    l=l.replace(/^#+\s*/,'').replace(/\*\*([^*]+)\*\*/g,'$1').replace(/\*([^*]+)\*/g,'$1')
+       .replace(/`[^`]+`/g,'').replace(/^[-*>]\s+/,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').trim();
+    if(l&&l.length>2) clean.push(l);
+  }
+  return clean.join('. ').substring(0,1200);
+}
+
+async function speakThis(btn, rawText){
+  if(_currentAudio||(window.speechSynthesis&&window.speechSynthesis.speaking)){stopSpeaking();return;}
+  var texto=limparTextoParaVoz(rawText||(btn.closest('.bubble')?btn.closest('.bubble').innerText:''));
+  if(!texto) return;
+  var voiceId=localStorage.getItem('iaf_vddb_voice')||EL_VOICES[0].id;
+  btn.classList.add('speaking');btn.textContent='⏳';
+  document.getElementById('stopSpeakBtn').style.display='flex';
+  try{
+    var resp=await fetch('/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:texto,voice_id:voiceId})});
+    if(!resp.ok) throw new Error('TTS '+resp.status);
+    var data=await resp.json();
+    var bytes=Uint8Array.from(atob(data.audio_b64),function(c){return c.charCodeAt(0);});
+    var blob=new Blob([bytes],{type:'audio/mpeg'});
+    var url=URL.createObjectURL(blob);
+    _currentAudio=new Audio(url);
+    _currentAudio.onended=function(){_currentAudio=null;btn.classList.remove('speaking');btn.textContent='🔊';document.getElementById('stopSpeakBtn').style.display='none';URL.revokeObjectURL(url);};
+    _currentAudio.onerror=function(){_currentAudio=null;btn.classList.remove('speaking');btn.textContent='🔊';document.getElementById('stopSpeakBtn').style.display='none';};
+    _currentAudio.play();
+  }catch(e){btn.classList.remove('speaking');btn.textContent='🔊';document.getElementById('stopSpeakBtn').style.display='none';console.error('TTS erro:',e);}
+}
+
+// ── Mic / STT ────────────────────────────────────────────
+var _recognition=null, _recording=false;
+function toggleMic(){
+  if(_recording){_recording=false;if(_recognition)_recognition.stop();return;}
+  var SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){alert('Seu navegador nao suporta reconhecimento de voz.');return;}
+  _recognition=new SpeechRecognition();
+  _recognition.lang='pt-BR';_recognition.continuous=false;_recognition.interimResults=false;
+  _recognition.onstart=function(){_recording=true;document.getElementById('micBtn').classList.add('recording');};
+  _recognition.onresult=function(e){
+    var txt=e.results[0][0].transcript;
+    document.getElementById('userInput').value=txt;
+    _recording=false;document.getElementById('micBtn').classList.remove('recording');
+    enviarInput();
+  };
+  _recognition.onerror=function(){_recording=false;document.getElementById('micBtn').classList.remove('recording');};
+  _recognition.onend=function(){_recording=false;document.getElementById('micBtn').classList.remove('recording');};
+  _recognition.start();
+}
+
+// ── DANFE ────────────────────────────────────────────────
+function abrirDanfe(chave){
+  document.getElementById('danfeOverlay').classList.add('active');
+  document.getElementById('danfeTitulo').textContent='DANFE · '+chave.substring(0,8)+'...';
+  document.getElementById('danfeLoading').style.display='flex';
+  document.getElementById('danfeIframe').style.display='none';
+  fetch('/danfe/'+chave)
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var bytes=Uint8Array.from(atob(data.pdf_b64),function(c){return c.charCodeAt(0);});
+      var blob=new Blob([bytes],{type:'application/pdf'});
+      var url=URL.createObjectURL(blob);
+      var iframe=document.getElementById('danfeIframe');
+      iframe.src=url;
+      iframe.style.display='block';
+      document.getElementById('danfeLoading').style.display='none';
+      document.getElementById('danfeDlBtn').href=url;
+    })
+    .catch(function(){
+      document.getElementById('danfeLoading').innerHTML='<span style="color:#e03030;">Erro ao carregar DANFE</span>';
+    });
+}
+function fecharDanfe(){document.getElementById('danfeOverlay').classList.remove('active');}
+
+function abrirBuscaNF(){
+  var html='<div style="padding:10px 0;">'
+    +'<div style="font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Buscar Nota Fiscal (DANFE)</div>'
+    +'<div class="nf-search-bar">'
+    +'<input class="nf-search-input" id="nfChaveInput" placeholder="Cole a chave de acesso (44 digitos)" maxlength="44">'
+    +'<button class="nf-search-btn" onclick="buscarNF()">Buscar</button>'
+    +'</div></div>';
+  addMsg(html,'assistant');
+  setTimeout(function(){var el=document.getElementById('nfChaveInput');if(el)el.focus();},100);
+}
+
+function buscarNF(){
+  var chave=(document.getElementById('nfChaveInput')||{}).value||'';
+  chave=chave.replace(/\D/g,'');
+  if(chave.length!==44){alert('Informe a chave de acesso com 44 digitos.');return;}
+  abrirDanfe(chave);
+}
+
+// ── Chat principal ────────────────────────────────────────
+var chat=document.getElementById('messages');
+var input=document.getElementById('userInput');
+var sendBtn=document.getElementById('sendBtn');
+
+input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviarInput();}});
+input.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';});
+
+function enviarInput(){
+  var texto=input.value.trim();
+  if(!texto) return;
+  input.value='';input.style.height='';
+  enviar(texto);
+}
+
+async function enviar(texto){
+  if(!texto) return;
+  // esconde welcome
+  var welcome=document.querySelector('.welcome');
+  if(welcome) welcome.remove();
+
+  // chave de NF-e? abre direto
+  var chave=texto.replace(/\D/g,'');
+  if(chave.length===44){abrirDanfe(chave);return;}
+
+  addMsg(texto,'user');
+  var loading=addTyping();
+  sendBtn.disabled=true;input.disabled=true;
+
+  try{
+    var resp=await fetch('/ask',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pergunta:texto})
+    });
+    var data=await resp.json();
+    loading.remove();
+
+    var sqlId='sql'+Date.now();
+    var inner=markdownToHtml(data.resposta)
+      +'<div class="msg-actions">'
+      +'<button class="speak-btn" title="Ouvir resposta" onclick="speakThis(this)">🔊</button>'
+      +'<span class="sql-toggle" onclick="toggleSql(\''+sqlId+'\')">▸ SQL</span>'
+      +'<button class="pdf-btn" title="Baixar análise em PDF" onclick="baixarPDF(this,\''+btoa(encodeURIComponent(texto))+'\')">⬇ PDF</button>'
+      +'<span class="row-count">'+data.row_count+' reg.</span>'
+      +'</div>'
+      +'<pre class="sql-box" id="'+sqlId+'">'+escHtml(data.sql)+'</pre>';
+    addMsg(inner,'assistant');
+  }catch(e){
+    loading.remove();
+    addMsg('Erro ao consultar. Tente novamente.','assistant');
+  }
+  sendBtn.disabled=false;input.disabled=false;input.focus();
+  chat.scrollTop=chat.scrollHeight;
+}
+
+function addMsg(html,tipo){
+  var wrap=document.createElement('div');
+  wrap.className='message '+(tipo==='user'?'user':'assistant');
+  var avatar=document.createElement('div');
+  avatar.className='msg-avatar';
+  avatar.textContent=tipo==='user'?'👤':'V';
+  var bubble=document.createElement('div');
+  bubble.className='bubble';
+  bubble.innerHTML=html;
+  wrap.appendChild(avatar);wrap.appendChild(bubble);
+  chat.appendChild(wrap);
+  chat.scrollTop=chat.scrollHeight;
+  return wrap;
+}
+
+function addTyping(){
+  var wrap=document.createElement('div');
+  wrap.className='message assistant typing';
+  wrap.innerHTML='<div class="msg-avatar">V</div><div class="bubble"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  chat.appendChild(wrap);
+  chat.scrollTop=chat.scrollHeight;
+  return wrap;
+}
+
+function toggleSql(id){var el=document.getElementById(id);if(el)el.classList.toggle('visible');}
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── Info / Atualizar ─────────────────────────────────────
+async function carregarInfo(){
+  try{
+    var r=await fetch('/info');
+    var d=await r.json();
+    var el=document.getElementById('csvData');
+    if(el) el.textContent='Atualizado em: '+d.ultima_atualizacao+' · '+d.total_registros.toLocaleString('pt-BR')+' reg.';
+  }catch(e){}
+}
+carregarInfo();
+
+async function forceReload(){
+  var btn=document.getElementById('btnAtualizar');
+  btn.textContent='↺ CARREGANDO...';btn.disabled=true;
+  try{
+    await fetch('/cache/invalidar');
+    location.reload();
+  }catch(e){
+    btn.textContent='↺ ATUALIZAR';btn.disabled=false;
+  }
+}
+
+// ── Modo Analítico ───────────────────────────────────────
+function ativarAnalitico(){
+  document.body.classList.add('modo-analitico');
+  localStorage.setItem('iaf_vddb_modo','analitico');
+  addMsg('🔬 <strong>Modo Analítico ativado.</strong><br>Agora você pode fazer perguntas comparativas e análises profundas — crescimento mês a mês, tendências por produto, performance ao longo do tempo.','assistant');
+}
+function desativarAnalitico(){
+  document.body.classList.remove('modo-analitico');
+  localStorage.removeItem('iaf_vddb_modo');
+  addMsg('⚡ <strong>Modo Rápido ativado.</strong> Consultas instantâneas de volta ao normal.','assistant');
+}
+(function(){ if(localStorage.getItem('iaf_vddb_modo')==='analitico') document.body.classList.add('modo-analitico'); })();
+
+async function baixarPDF(btn, perguntaB64){
+  if(btn.classList.contains('loading')) return;
+  btn.classList.add('loading');
+  btn.textContent='⏳ PDF';
+  try{
+    var pergunta=decodeURIComponent(atob(perguntaB64));
+    var resp=await fetch('/ask/pdf',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pergunta:pergunta})
+    });
+    if(!resp.ok) throw new Error('Erro '+resp.status);
+    var blob=await resp.blob();
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='IAF_VDDB_'+new Date().toISOString().slice(0,10)+'.pdf';
+    a.click();
+    setTimeout(function(){URL.revokeObjectURL(url);},5000);
+    btn.textContent='✓ PDF';
+    setTimeout(function(){btn.textContent='⬇ PDF';btn.classList.remove('loading');},2000);
+  }catch(e){
+    btn.textContent='⬇ PDF';
+    btn.classList.remove('loading');
+    console.error('PDF erro:',e);
+  }
+}
+
+function markdownToHtml(md){
+  return md
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g,'<em>$1</em>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/\n/g,'<br>')
+    .replace(/^/,'<p>').replace(/$/,'</p>');
+}
+</script>
+</body>
+</html>
