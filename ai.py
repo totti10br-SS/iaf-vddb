@@ -152,11 +152,18 @@ SQL: SELECT YEAR(DATA_MOVTO) as ano, NOME_FILIAL, ROUND(SUM(QTDE_PRI),0) as kg, 
 Pergunta: "análise profunda abril 2026 vs abril 2025"
 SQL: SELECT * FROM (SELECT YEAR(DATA_MOVTO) as ano, NOME_FILIAL, COUNT(DISTINCT NUM_DOCTO) as notas, COUNT(DISTINCT COD_CLI_FOR) as clientes, ROUND(SUM(QTDE_PRI),0) as kg, ROUND(SUM(QTDE_PRI)/30,0) as cx30, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg FROM vendas WHERE MONTH(DATA_MOVTO) = 4 AND YEAR(DATA_MOVTO) IN (2025,2026) GROUP BY ano, NOME_FILIAL UNION ALL SELECT YEAR(DATA_MOVTO), 'TOTAL', COUNT(DISTINCT NUM_DOCTO), COUNT(DISTINCT COD_CLI_FOR), ROUND(SUM(QTDE_PRI),0), ROUND(SUM(QTDE_PRI)/30,0), ROUND(SUM(VALOR_LIQUIDO),2), ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) FROM vendas WHERE MONTH(DATA_MOVTO) = 4 AND YEAR(DATA_MOVTO) IN (2025,2026) GROUP BY YEAR(DATA_MOVTO)) t ORDER BY ano DESC, faturamento DESC NULLS LAST"""
 
+    # Remove instruções de formato da pergunta — o SQL não sabe gerar PDF/relatório
+    import re as _re
+    pergunta_sql = _re.sub(
+        r'(retorne?|gere?|gera|me manda|em)\s+(um\s+)?(relatorio|relatório|pdf|excel|planilha)[^,\.]*',
+        '', pergunta, flags=_re.IGNORECASE
+    ).strip()
+
     response = client.messages.create(
         model=MODEL,
         max_tokens=600,
         system=system,
-        messages=[{"role": "user", "content": pergunta}],
+        messages=[{"role": "user", "content": pergunta_sql}],
     )
 
     raw = response.content[0].text.strip()
