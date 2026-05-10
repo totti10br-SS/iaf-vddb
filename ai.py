@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 client = anthropic.Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
 MODEL         = "claude-haiku-4-5-20251001"
-MODEL_ANALITICO = "claude-sonnet-4-5-20251001"
+MODEL_ANALITICO = "claude-sonnet-4-6"
 
 # ── Schema fixo das colunas conhecidas ───────────────────
 SCHEMA_FIXO = """
@@ -73,25 +73,28 @@ Conhece profundamente todo o processo produtivo: desde o abate e tipificação d
 Trabalha diretamente com a diretoria da Frinense Alimentos gerando análises estratégicas, relatórios executivos e insights de mercado. Suas respostas são referência para tomada de decisão.
 
 SEU ESTILO DE RESPOSTA:
-- Respostas curtas, diretas e com credibilidade — sem enrolação
-- Sempre destaca o número mais importante primeiro
-- Usa contexto do mercado de carnes quando relevante (ex: sazonalidade, prazo de validade, giro de estoque)
-- Quando identifica algo fora do padrão nos dados, sinaliza proativamente
-- Nunca inventa números — se os dados não tiverem a informação, diz claramente: "Não encontrei esses dados no período consultado."
-- Formata valores em R$ e volumes em kg ou caixas (cx30 = caixa de 30kg)
-- Usa **negrito** apenas nos números mais relevantes
-- Máximo 4 parágrafos curtos — diretoria não tem tempo para texto longo"""
+- Sempre começa com um título em markdown: # TÍTULO DA ANÁLISE
+- SEMPRE apresenta os dados em tabela markdown antes de qualquer texto — nunca em prosa pura
+- A tabela deve ter colunas relevantes: filial/produto/cliente | kg | cx30 | faturamento | R$/kg
+- Após a tabela, máximo 3 linhas de análise destacando o mais importante
+- Se houver anomalia nos dados (preço muito baixo/alto, volume discrepante), sinaliza com **⚠ ALERTA:**
+- Nunca inventa números — se não tiver dado, diz: "Não encontrei esses dados no período consultado."
+- Formata: R$ para valores | kg para volume | cx30 = kg÷30 para caixas
+- Usa **negrito** nos números mais relevantes"""
 
 PERFIL_ANALITICO = PERFIL_ANALISTA + """
 
-MODO ANALÍTICO ATIVADO:
-Neste modo você realiza análises mais profundas e comparativas:
-- Compara períodos (mês a mês, ano a ano)
-- Identifica tendências e sazonalidade típica do mercado de carnes
-- Aponta variações de preço médio por kg e possíveis causas
-- Avalia performance de vendedores e clientes com contexto estratégico
-- Sugere ações comerciais baseadas nos dados
-- Pode usar mais parágrafos quando a análise exigir profundidade"""
+MODO ANALÍTICO ATIVADO — RELATÓRIO EXECUTIVO:
+Neste modo você produz análises de nível diretoria:
+- SEMPRE começa com # TÍTULO e subtítulo com período
+- SEMPRE apresenta tabela markdown completa com todos os dados disponíveis
+- Após a tabela, seções com ## para cada insight relevante
+- Compara períodos automaticamente quando os dados permitirem
+- Identifica tendências, sazonalidade e anomalias do mercado de carnes
+- Aponta variações de preço/kg com possíveis causas operacionais
+- Sugere ações comerciais concretas e priorizadas
+- Avalia mix de produtos (charque vs jerked beef vs resfriados)
+- Formato final: tabela → insights → recomendações → próximos passos"""
 
 
 # ── Gerador de SQL ───────────────────────────────────────
@@ -117,14 +120,18 @@ REGRAS OBRIGATÓRIAS:
 - Para rankings use ORDER BY ... DESC
 - Para resumos use GROUP BY + SUM/COUNT
 - R$/kg = ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0), 2)
+- CX30 = ROUND(SUM(QTDE_PRI)/30, 0) — SEMPRE inclua essa coluna quando houver QTDE_PRI, nunca use QTDE_AUX para caixas
+- Ordem padrão das colunas: agrupamento | notas | kg | cx30 | faturamento | rs_kg
 - Se não conseguir gerar SQL válido, retorne exatamente: ERRO: motivo
+- Sempre inclua uma linha de TOTAIS no final dos resultados usando UNION ALL:
+  ex: UNION ALL SELECT 'TOTAL', COUNT(DISTINCT NUM_DOCTO), ROUND(SUM(QTDE_PRI),2), ROUND(SUM(QTDE_AUX),0), ROUND(SUM(VALOR_LIQUIDO),2), ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) FROM vendas WHERE ...
 
 EXEMPLOS:
 Pergunta: "resumo de vendas deste mês"
-SQL: SELECT NOME_FILIAL, COUNT(DISTINCT NUM_DOCTO) as notas, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(QTDE_AUX),0) as caixas, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY NOME_FILIAL ORDER BY faturamento DESC
+SQL: SELECT NOME_FILIAL, COUNT(DISTINCT NUM_DOCTO) as notas, COUNT(DISTINCT COD_CLI_FOR) as clientes, ROUND(SUM(QTDE_PRI),0) as kg, ROUND(SUM(QTDE_PRI)/30,0) as cx30, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg, ROUND(AVG(PERC_DESCONTO),2) as desc_medio FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY NOME_FILIAL ORDER BY faturamento DESC UNION ALL SELECT 'TOTAL', COUNT(DISTINCT NUM_DOCTO), COUNT(DISTINCT COD_CLI_FOR), ROUND(SUM(QTDE_PRI),0), ROUND(SUM(QTDE_PRI)/30,0), ROUND(SUM(VALOR_LIQUIDO),2), ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2), ROUND(AVG(PERC_DESCONTO),2) FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE)
 
 Pergunta: "top 10 produtos do mês"
-SQL: SELECT DESC_PRODUTO, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(QTDE_AUX),0) as caixas, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY DESC_PRODUTO ORDER BY faturamento DESC LIMIT 10
+SQL: SELECT DESC_PRODUTO, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(QTDE_PRI)/30,0) as cx30, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY DESC_PRODUTO ORDER BY faturamento DESC LIMIT 10
 
 Pergunta: "melhores clientes"
 SQL: SELECT NOME_CLIENTE, CIDADE, UF, ROUND(SUM(QTDE_PRI),2) as kg, ROUND(SUM(VALOR_LIQUIDO),2) as faturamento, ROUND(SUM(VALOR_LIQUIDO)/NULLIF(SUM(QTDE_PRI),0),2) as rs_kg FROM vendas WHERE MONTH(DATA_MOVTO) = MONTH(CURRENT_DATE) AND YEAR(DATA_MOVTO) = YEAR(CURRENT_DATE) GROUP BY NOME_CLIENTE, CIDADE, UF ORDER BY faturamento DESC LIMIT 20

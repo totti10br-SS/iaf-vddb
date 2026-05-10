@@ -58,7 +58,8 @@ def calcular_previsao(csv_path: Path) -> dict:
             SELECT
                 CAST(DATA_MOVTO AS DATE) as dia,
                 ROUND(SUM(VALOR_LIQUIDO), 2) as fat_dia,
-                ROUND(SUM(QTDE_PRI), 2) as kg_dia
+                ROUND(SUM(QTDE_PRI), 2) as kg_dia,
+                ROUND(SUM(QTDE_PRI)/30, 1) as cx30_dia
             FROM read_csv_auto('{csv_path}', header=true)
             WHERE MONTH(DATA_MOVTO) = {mes}
               AND YEAR(DATA_MOVTO) = {ano}
@@ -77,11 +78,13 @@ def calcular_previsao(csv_path: Path) -> dict:
     dias_com_dados = [r[0] for r in rows]
     fat_total_realizado = sum(r[1] for r in rows)
     kg_total_realizado  = sum(r[2] for r in rows)
+    cx30_total_realizado = round(kg_total_realizado / 30, 0)
     n_dias_realizados   = len(dias_com_dados)
 
     # Média por dia realizado
-    media_fat_dia = fat_total_realizado / n_dias_realizados
-    media_kg_dia  = kg_total_realizado  / n_dias_realizados
+    media_fat_dia  = fat_total_realizado / n_dias_realizados
+    media_kg_dia   = kg_total_realizado  / n_dias_realizados
+    media_cx30_dia = media_kg_dia / 30
 
     # Todos os dias úteis do mês
     todos_uteis = dias_uteis_mes(ano, mes)
@@ -92,8 +95,9 @@ def calcular_previsao(csv_path: Path) -> dict:
     n_restantes = len(uteis_restantes)
 
     # Projeção
-    fat_projetado = fat_total_realizado + (media_fat_dia * n_restantes)
-    kg_projetado  = kg_total_realizado  + (media_kg_dia  * n_restantes)
+    fat_projetado  = fat_total_realizado + (media_fat_dia  * n_restantes)
+    kg_projetado   = kg_total_realizado  + (media_kg_dia   * n_restantes)
+    cx30_projetado = round(kg_projetado / 30, 0)
 
     # % do mês executado
     uteis_ate_hoje = [d for d in todos_uteis if d <= hoje]
@@ -110,5 +114,8 @@ def calcular_previsao(csv_path: Path) -> dict:
         "uteis_restantes":      n_restantes,
         "fat_projetado":        round(fat_projetado, 2),
         "kg_projetado":         round(kg_projetado, 2),
+        "cx30_realizado":       int(cx30_total_realizado),
+        "cx30_projetado":       int(cx30_projetado),
+        "media_cx30_dia":       round(media_cx30_dia, 1),
         "pct_mes_executado":    pct_mes,
     }
